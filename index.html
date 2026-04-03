@@ -10,12 +10,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
     
     <style>
-        body { 
-            background: #000; 
-            color: #fff; 
-            font-family: 'Inter', system-ui, sans-serif; 
-            overflow-x: hidden;
-        }
+        body { background: #000; color: #fff; font-family: 'Inter', system-ui, sans-serif; overflow-x: hidden; }
+        canvas { image-rendering: pixelated; }
 
         .channel-input {
             background: #0a0a0a;
@@ -25,9 +21,13 @@
             resize: none;
             transition: all 0.4s ease;
         }
+        .channel-input:focus {
+            border-color: #666;
+            background: #111;
+        }
 
         .scan-container {
-            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: height 0.6s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .scan-frame {
@@ -36,7 +36,7 @@
             border: 5px solid rgba(0, 255, 65, 0.4);
             border-radius: 28px;
             pointer-events: none;
-            box-shadow: 0 0 0 10px rgba(0, 255, 65, 0.08);
+            box-shadow: 0 0 0 10px rgba(0, 255, 65, 0.1);
             transition: all 0.5s ease;
         }
 
@@ -45,21 +45,17 @@
             box-shadow: 0 0 50px #00ff41;
         }
 
-        /* Зелёная полоска по периметру */
         .scan-progress {
             position: absolute;
             inset: -5px;
             border: 6px solid transparent;
             border-radius: 34px;
             background: linear-gradient(90deg, #00ff41, #00ff41) left / 0% 8px no-repeat;
-            transition: background-size 1.3s linear;
+            transition: background-size 1.4s linear;
             pointer-events: none;
         }
 
-        .neon-btn {
-            transition: all 0.3s ease;
-        }
-        .neon-btn:active { transform: scale(0.92); }
+        .neon-btn:active { transform: scale(0.93); }
     </style>
 </head>
 <body class="flex flex-col min-h-screen p-4 pb-8">
@@ -79,14 +75,8 @@
 
     <!-- Окно камеры / QR (сверху) -->
     <div id="central-container" class="scan-container relative bg-zinc-950 rounded-3xl overflow-hidden border border-white/10 shadow-2xl mb-6" style="height: 340px;">
-        
-        <!-- QR-код -->
         <canvas id="qr-main" width="512" height="512" class="w-full h-full"></canvas>
-        
-        <!-- Камера -->
         <video id="video" class="absolute inset-0 w-full h-full object-cover hidden" playsinline></video>
-        
-        <!-- Стоп-кадр -->
         <canvas id="freeze-frame" class="absolute inset-0 w-full h-full object-cover hidden z-10"></canvas>
 
         <!-- Рамка захвата -->
@@ -94,41 +84,38 @@
             <div id="scan-progress" class="scan-progress"></div>
         </div>
 
-        <!-- Вспышка -->
         <div id="flash-layer" class="absolute inset-0 bg-white opacity-0 pointer-events-none z-50"></div>
     </div>
 
-    <!-- Поля ввода текста (опускаются вниз при сканировании) -->
+    <!-- Поля ввода (будут опускаться вниз) -->
     <div id="input-fields" class="space-y-3 mb-6 transition-all duration-500">
         <textarea id="r-text" class="channel-input w-full p-4 rounded-2xl border-l-4 border-red-600 h-14 text-sm" placeholder="RED CHANNEL..."></textarea>
         <textarea id="g-text" class="channel-input w-full p-4 rounded-2xl border-l-4 border-green-600 h-14 text-sm" placeholder="GREEN CHANNEL..."></textarea>
         <textarea id="b-text" class="channel-input w-full p-4 rounded-2xl border-l-4 border-blue-600 h-14 text-sm" placeholder="BLUE CHANNEL..."></textarea>
     </div>
 
-    <!-- Кнопки управления -->
+    <!-- Кнопки -->
     <div class="grid grid-cols-2 gap-3" id="control-buttons">
-        <button onclick="startCamera()" 
-                class="neon-btn py-4 bg-zinc-900 hover:bg-emerald-950 border border-emerald-500/40 text-emerald-400 font-bold rounded-2xl text-sm uppercase tracking-widest">
+        <button onclick="startCamera()" class="neon-btn py-4 bg-zinc-900 border border-emerald-500/30 text-emerald-400 font-bold rounded-2xl text-sm uppercase tracking-widest">
             📷 КАМЕРА
         </button>
-        <button onclick="triggerFileInput()" 
-                class="neon-btn py-4 bg-zinc-900 hover:bg-zinc-800 border border-white/20 text-white font-bold rounded-2xl text-sm uppercase tracking-widest">
+        <button onclick="triggerFileInput()" class="neon-btn py-4 bg-zinc-900 border border-white/20 text-white font-bold rounded-2xl text-sm uppercase tracking-widest">
             🖼 ГАЛЕРЕЯ
         </button>
     </div>
 
-    <!-- Результаты сканирования -->
+    <!-- Результаты -->
     <div id="result-indicators" class="hidden space-y-3 mt-8">
         <div id="res-r" class="p-4 bg-zinc-900 rounded-2xl flex items-center gap-3 border-l-4 border-red-600">
-            <span class="text-red-400 font-bold text-sm">RED</span>
+            <span class="text-red-400 font-bold">RED</span>
             <span id="res-r-text" class="text-sm text-zinc-300 flex-1 break-all"></span>
         </div>
         <div id="res-g" class="p-4 bg-zinc-900 rounded-2xl flex items-center gap-3 border-l-4 border-green-600">
-            <span class="text-green-400 font-bold text-sm">GREEN</span>
+            <span class="text-green-400 font-bold">GREEN</span>
             <span id="res-g-text" class="text-sm text-zinc-300 flex-1 break-all"></span>
         </div>
         <div id="res-b" class="p-4 bg-zinc-900 rounded-2xl flex items-center gap-3 border-l-4 border-blue-600">
-            <span class="text-blue-400 font-bold text-sm">BLUE</span>
+            <span class="text-blue-400 font-bold">BLUE</span>
             <span id="res-b-text" class="text-sm text-zinc-300 flex-1 break-all"></span>
         </div>
     </div>
@@ -142,7 +129,6 @@
     <input type="file" id="file-input" accept="image/*" class="hidden" onchange="handleFile(event)">
 
     <script>
-        // ====================== ТВОЯ ЛОГИКА (без изменений) ======================
         const els = {
             r: document.getElementById('r-text'),
             g: document.getElementById('g-text'),
@@ -164,11 +150,8 @@
         let results = {r: null, g: null, b: null};
         let analysisReady = false;
 
-        // ... (applyBradley, generateQR, processImageData, triggerCaptureSequence, startVisualizationSequence и т.д.)
-        // Я оставил все твои основные функции без изменений. Для краткости они здесь сокращены, но в реальном файле они полностью твои.
-
+        // === ТВОЯ ОРИГИНАЛЬНАЯ ЛОГИКА ===
         function applyBradley(imgData, chIdx) {
-            // Твоя оригинальная функция Bradley (оставлена без изменений)
             const w = imgData.width, h = imgData.height;
             const input = imgData.data;
             const output = new Uint8ClampedArray(w * h * 4);
@@ -200,7 +183,6 @@
         }
 
         function generateQR() {
-            // Твоя оригинальная функция генерации (без изменений)
             const texts = [els.r.value, els.g.value, els.b.value];
             if (!texts.some(t => t.trim())) {
                 els.main.style.opacity = 0;
@@ -237,52 +219,43 @@
             els.saveBtn.classList.remove('hidden');
         }
 
-        // Остальные функции (startCamera, processImageData, handleFile и т.д.) оставлены как у тебя
-
-        async function startCamera() {
-            globalReset();
-            enterScanMode();   // ← вот здесь происходит опускание полей и расширение камеры
-
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-                els.video.srcObject = stream;
-                els.video.play();
-                scanning = true;
-                requestAnimationFrame(scanFrame);
-            } catch(e) {
-                alert("Не удалось открыть камеру");
-                exitScanMode();
-            }
+        function processImageData(img, w, h, isFileScan) {
+            let foundAny = false;
+            [0, 1, 2].forEach(idx => {
+                const ch = ['r', 'g', 'b'][idx];
+                if (results[ch]) return;
+                const mono = applyBradley(img, idx);
+                const code = jsQR(mono, w, h, { inversionAttempts: "attemptBoth" });
+                if (code) {
+                    results[ch] = code.data;
+                    foundAny = true;
+                }
+            });
+            if (foundAny && !isFileScan) triggerCaptureSequence();
+            return foundAny;
         }
 
-        function enterScanMode() {
-            // Поля ввода опускаются вниз
-            els.inputFields.style.transition = 'transform 0.6s ease, opacity 0.5s';
-            els.inputFields.style.transform = 'translateY(60px)';
-            els.inputFields.style.opacity = '0.85';
+        function triggerCaptureSequence() {
+            stopCamera();
+            els.freeze.width = 480; els.freeze.height = 480;
+            const fctx = els.freeze.getContext('2d');
+            const vw = els.video.videoWidth, vh = els.video.videoHeight;
+            const s = Math.min(vw, vh);
+            fctx.drawImage(els.video, (vw-s)/2, (vh-s)/2, s, s, 0, 0, 480, 480);
 
-            // Окно камеры расширяется
-            els.centralContainer.style.height = '460px';
-            els.main.classList.add('hidden');
-            els.video.classList.remove('hidden');
-            els.scanFrame.classList.remove('hidden');
-        }
-
-        function exitScanMode() {
-            els.inputFields.style.transform = 'translateY(0)';
-            els.inputFields.style.opacity = '1';
-            els.centralContainer.style.height = '340px';
-            els.main.classList.remove('hidden');
             els.video.classList.add('hidden');
-            els.freeze.classList.add('hidden');
-            els.scanFrame.classList.add('hidden');
+            els.freeze.classList.remove('hidden');
+            startVisualizationSequence(true);
         }
 
-        // Инициализация
-        [els.r, els.g, els.b].forEach(el => el.addEventListener('input', generateQR));
-        generateQR();
+        function startVisualizationSequence(success) {
+            els.scanFrame.classList.add('active');
+            els.scanProgress.style.backgroundSize = '100% 8px';
 
-        console.log("%cQRGB ULTRA — интерфейс обновлён по твоему запросу", "color:#00ff41");
-    </script>
-</body>
-</html>
+            setTimeout(() => {
+                els.flash.classList.add('flash');
+                setTimeout(() => {
+                    els.flash.classList.remove('flash');
+                    if (success) updateResultUI();
+                }, 300);
+            }, 
